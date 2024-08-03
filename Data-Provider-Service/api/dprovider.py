@@ -4,8 +4,8 @@ from datetime import datetime, date
 from model.data_provider_model import Event
 from database.mongodb import find
 from queuemq.broker import rabbitmq_broker
-import os
 import json
+import os
 
 router = APIRouter()
 
@@ -28,9 +28,9 @@ async def get_events(
     if updated__gte or updated__lte:
         query["timestamp"] = {}
         if updated__gte:
-            query["timestamp"]["$gte"] = updated__gte
+            query["timestamp"]["$gte"] = updated__gte.isoformat()
         if updated__lte:
-            query["timestamp"]["$lte"] = updated__lte
+            query["timestamp"]["$lte"] = updated__lte.isoformat()
 
     if rpg_status is not None:
         query["rpg_status"] = rpg_status
@@ -48,22 +48,10 @@ async def get_events(
     collection = os.getenv("MONGODB_COLLECTION")
     events = await find(collection, query)
     
-    def get_timestamp(event):
-        timestamp = event['timestamp']
-        if isinstance(timestamp, str):
-            dt = datetime.fromisoformat(timestamp.rstrip('Z'))
-        else:
-            dt = timestamp
-        return dt.replace(tzinfo=None)
+    print(f"Query: {query}")
+    print(f"Number of events found: {len(events)}")
 
-    sorted_events = sorted(events, key=get_timestamp)
-    
-    for event in sorted_events:
-        if isinstance(event['night_of_stay'], str):
-            event['night_of_stay'] = date.fromisoformat(event['night_of_stay'])
-        event['timestamp'] = get_timestamp(event)  
-    
-    return [Event(**event) for event in sorted_events]
+    return [Event(**event) for event in events]
 
 class DateTimeEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -76,10 +64,8 @@ async def create_event(event: Event):
     try:
         event_dict = event.dict()
         
-        # Serialize the event_dict to JSON, handling datetime objects
         event_json = json.dumps(event_dict, cls=DateTimeEncoder)
         
-        # Publish event to RabbitMQ
         try:
             await rabbitmq_broker.publish(event_json, str(event_dict["id"]))
             return event

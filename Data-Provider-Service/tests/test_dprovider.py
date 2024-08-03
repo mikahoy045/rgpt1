@@ -65,7 +65,7 @@ async def test_create_multi_event_success(client):
             assert "id" in response_data
             assert response_data["timestamp"] == sample_event["timestamp"]
             assert response_data["rpg_status"] == sample_event["rpg_status"]
-            assert response_data["room_id"] == sample_event["room_id"]
+            assert response_data["room_id"] == str(sample_event["room_id"])
             assert response_data["night_of_stay"] == sample_event["night_of_stay"]
         
         break 
