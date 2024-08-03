@@ -3,9 +3,9 @@ from typing import List, Dict, Optional, Any
 from datetime import datetime, date
 
 class EventDetail(BaseModel):
-    id: Any
-    room_id: Optional[str] = None
-    night_of_stay: Optional[str] = None
+    id: str
+    room_id: str
+    night_of_stay: str
 
 class BookingData(BaseModel):
     total: int
@@ -27,4 +27,4 @@ class DashboardResponse(BaseModel):
 
     def dict(self, *args, **kwargs):
         d = super().dict(*args, **kwargs)
-        return {k: v for k, v in d.items() if v is not None}
+        return {k: v for k, v in d.items() if v is not None and k != "detail_daily" and k != "detail_monthly"}

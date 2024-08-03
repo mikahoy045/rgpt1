@@ -56,8 +56,8 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
             "total": {"$sum": "$count"},
             "detail": {"$push": {
                 "id": {"$toString": "$_id"},
-                "room_id": {"$ifNull": ["$room_id", None]},
-                "night_of_stay": {"$ifNull": ["$night_of_stay", None]}
+                "room_id": {"$ifNull": ["$room_id", "unknown"]},
+                "night_of_stay": "$date"
             }}
         }},
         {"$sort": {"_id": 1}}
@@ -78,11 +78,37 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
             detail=bookings
         )
     elif period == "month":
+        monthly_query = {"hotel_id": hotel_id, "year": year, "type": "daily"}
+        
+        monthly_pipeline = [
+            {"$match": monthly_query},
+            {"$group": {
+                "_id": {"$substr": ["$date", 0, 7]},  # Group by YYYY-MM
+                "total": {"$sum": "$count"},
+                "details": {"$push": {
+                    "id": {"$toString": "$_id"},
+                    "room_id": {"$ifNull": ["$room_id", "unknown"]},
+                    "night_of_stay": "$date"
+                }}
+            }},
+            {"$sort": {"_id": 1}}
+        ]
+        
+        monthly_result = await run_mongo_task(lambda: list(db.db[collection].aggregate(monthly_pipeline)))
+        
+        monthly_bookings = {
+            item["_id"]: BookingData(
+                total=item["total"], 
+                detail=[EventDetail(**detail) for detail in item["details"]]
+            ) 
+            for item in monthly_result
+        }
+        
         return DashboardResponse(
             hotel_id=hotel_id,
             period="monthly",
             year=year,
-            detail=bookings
+            detail=monthly_bookings
         )
     else:  # period == "day+month"
         daily_query = {"hotel_id": hotel_id, "year": year, "type": "daily"}
@@ -95,8 +121,8 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
                 "total": {"$sum": "$count"},
                 "detail": {"$push": {
                     "id": {"$toString": "$_id"},
-                    "room_id": {"$ifNull": ["$room_id", None]},
-                    "night_of_stay": {"$ifNull": ["$night_of_stay", None]}
+                    "room_id": {"$ifNull": ["$room_id", "unknown"]},
+                    "night_of_stay": "$date"
                 }}
             }},
             {"$sort": {"_id": 1}}
@@ -105,12 +131,12 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
         monthly_pipeline = [
             {"$match": monthly_query},
             {"$group": {
-                "_id": "$date",
+                "_id": {"$substr": ["$date", 0, 7]},  # Group by YYYY-MM
                 "total": {"$sum": "$count"},
-                "detail": {"$push": {
+                "details": {"$push": {
                     "id": {"$toString": "$_id"},
-                    "room_id": {"$ifNull": ["$room_id", None]},
-                    "night_of_stay": {"$ifNull": ["$night_of_stay", None]}
+                    "room_id": {"$ifNull": ["$room_id", "unknown"]},
+                    "night_of_stay": "$date"
                 }}
             }},
             {"$sort": {"_id": 1}}
@@ -120,7 +146,13 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
         monthly_result = await run_mongo_task(lambda: list(db.db[collection].aggregate(monthly_pipeline)))
         
         daily_bookings = {item["_id"]: BookingData(total=item["total"], detail=[EventDetail(**detail) for detail in item["detail"]]) for item in daily_result}
-        monthly_bookings = {item["_id"]: BookingData(total=item["total"], detail=[EventDetail(**detail) for detail in item["detail"]]) for item in monthly_result}
+        monthly_bookings = {
+            item["_id"]: BookingData(
+                total=item["total"], 
+                detail=[EventDetail(**detail) for detail in item["details"]]
+            ) 
+            for item in monthly_result
+        }
         
         return DashboardResponse(
             hotel_id=hotel_id,
