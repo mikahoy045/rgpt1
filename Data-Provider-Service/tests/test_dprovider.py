@@ -11,7 +11,7 @@ from dataprovider import app
 from model.data_provider_model import Event
 from queuemq.broker import rabbitmq_broker
 from database.mongodb import connect_to_mongo, close_mongo_connection
-from datetime import date
+from datetime import date, timezone
 
 
 @pytest.fixture(scope="module")
@@ -32,10 +32,10 @@ async def setup_teardown():
 
 @pytest.fixture
 def sample_event():
-    timestamp = datetime.now() + timedelta(days=random.randint(0, 7))
+    timestamp = datetime.now(timezone.utc) + timedelta(days=random.randint(0, 7))
     return {
         "hotel_id": random.randint(1, 2),
-        "timestamp": timestamp.isoformat(),
+        "timestamp": timestamp.strftime('%Y-%m-%dT%H:%M:%S+00:00'),
         "rpg_status": random.randint(1, 2),
         "room_id": random.randint(100, 105),
         "night_of_stay": timestamp.date().isoformat()
@@ -48,22 +48,22 @@ def is_sorted_by_timestamp(events):
 async def test_create_multi_event_success(client):
     async for c in client:
         for _ in range(30):
+            timestamp = datetime.now(timezone.utc) + timedelta(days=random.randint(0, 7))
             sample_event = {
                 "hotel_id": random.randint(1, 2),
-                "timestamp": (datetime.now() + timedelta(days=random.randint(0, 7))).isoformat(),
+                "timestamp": timestamp.strftime('%Y-%m-%dT%H:%M:%S+00:00'),
                 "rpg_status": random.randint(1, 2),
                 "room_id": random.randint(100, 105),
-                "night_of_stay": (date.today() + timedelta(days=random.randint(0, 7))).isoformat()
+                "night_of_stay": timestamp.date().isoformat()
             }
             
             response = await c.post("/events", json=sample_event)
             assert response.status_code == 200
             assert response.json()["hotel_id"] == sample_event["hotel_id"]
         
-            # Add more assertions to verify the response
             response_data = response.json()
             assert "id" in response_data
-            assert response_data["timestamp"] == sample_event["timestamp"]
+            assert response_data["timestamp"] == sample_event["timestamp"].replace('+00:00', 'Z')
             assert response_data["rpg_status"] == sample_event["rpg_status"]
             assert response_data["room_id"] == str(sample_event["room_id"])
             assert response_data["night_of_stay"] == sample_event["night_of_stay"]
