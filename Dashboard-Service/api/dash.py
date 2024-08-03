@@ -5,6 +5,10 @@ from database.mongodb import get_dashboard_data
 
 router = APIRouter()
 
+@router.get("/")
+def read_root():
+    return {"Hello": "Data Provider"}
+
 @router.get("/dashboard", response_model=DashboardResponse)
 async def get_dashboard(
     hotel_id: int = Query(..., description="The ID of the hotel"),

@@ -4,6 +4,8 @@ import os
 import asyncio
 from typing import List
 from model.dashboard_model import DashboardResponse, BookingData
+from bson import ObjectId
+from model.dashboard_model import EventDetail
 
 load_dotenv()
 
@@ -44,40 +46,28 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
     query = {
         "hotel_id": hotel_id,
         "year": year,
-        "rpg_status": 1
+        "type": "daily" if period == "day" else "monthly"
     }
 
-    daily_pipeline = [
+    pipeline = [
         {"$match": query},
         {"$group": {
-            "_id": "$night_of_stay",
-            "total": {"$sum": 1},
-            "detail": {"$push": {"id": "$id", "room_id": "$room_id", "night_of_stay": "$night_of_stay"}}
+            "_id": "$date",
+            "total": {"$sum": "$count"},
+            "detail": {"$push": {
+                "id": {"$toString": "$_id"},
+                "room_id": {"$ifNull": ["$room_id", None]},
+                "night_of_stay": {"$ifNull": ["$night_of_stay", None]}
+            }}
         }},
         {"$sort": {"_id": 1}}
     ]
 
-    monthly_pipeline = [
-        {"$match": query},
-        {"$group": {
-            "_id": {"$substr": ["$night_of_stay", 0, 7]},
-            "total": {"$sum": 1},
-            "detail": {"$push": {"id": "$id", "room_id": "$room_id", "night_of_stay": "$night_of_stay"}}
-        }},
-        {"$sort": {"_id": 1}}
-    ]
+    result = await run_mongo_task(lambda: list(db.db[collection].aggregate(pipeline)))
 
-    daily_result = await run_mongo_task(lambda: list(db.db[collection].aggregate(daily_pipeline)))
-    monthly_result = await run_mongo_task(lambda: list(db.db[collection].aggregate(monthly_pipeline)))
-
-    daily_bookings = {
-        item["_id"]: BookingData(total=item["total"], detail=item["detail"])
-        for item in daily_result
-    }
-
-    monthly_bookings = {
-        item["_id"]: BookingData(total=item["total"], detail=item["detail"])
-        for item in monthly_result
+    bookings = {
+        item["_id"]: BookingData(total=item["total"], detail=[EventDetail(**detail) for detail in item["detail"]])
+        for item in result
     }
 
     if period == "day":
@@ -85,16 +75,53 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
             hotel_id=hotel_id,
             period="daily",
             year=year,
-            detail=daily_bookings
+            detail=bookings
         )
     elif period == "month":
         return DashboardResponse(
             hotel_id=hotel_id,
             period="monthly",
             year=year,
-            detail=monthly_bookings
+            detail=bookings
         )
     else:  # period == "day+month"
+        daily_query = {"hotel_id": hotel_id, "year": year, "type": "daily"}
+        monthly_query = {"hotel_id": hotel_id, "year": year, "type": "monthly"}
+        
+        daily_pipeline = [
+            {"$match": daily_query},
+            {"$group": {
+                "_id": "$date",
+                "total": {"$sum": "$count"},
+                "detail": {"$push": {
+                    "id": {"$toString": "$_id"},
+                    "room_id": {"$ifNull": ["$room_id", None]},
+                    "night_of_stay": {"$ifNull": ["$night_of_stay", None]}
+                }}
+            }},
+            {"$sort": {"_id": 1}}
+        ]
+        
+        monthly_pipeline = [
+            {"$match": monthly_query},
+            {"$group": {
+                "_id": "$date",
+                "total": {"$sum": "$count"},
+                "detail": {"$push": {
+                    "id": {"$toString": "$_id"},
+                    "room_id": {"$ifNull": ["$room_id", None]},
+                    "night_of_stay": {"$ifNull": ["$night_of_stay", None]}
+                }}
+            }},
+            {"$sort": {"_id": 1}}
+        ]
+        
+        daily_result = await run_mongo_task(lambda: list(db.db[collection].aggregate(daily_pipeline)))
+        monthly_result = await run_mongo_task(lambda: list(db.db[collection].aggregate(monthly_pipeline)))
+        
+        daily_bookings = {item["_id"]: BookingData(total=item["total"], detail=[EventDetail(**detail) for detail in item["detail"]]) for item in daily_result}
+        monthly_bookings = {item["_id"]: BookingData(total=item["total"], detail=[EventDetail(**detail) for detail in item["detail"]]) for item in monthly_result}
+        
         return DashboardResponse(
             hotel_id=hotel_id,
             period="daily+monthly",
