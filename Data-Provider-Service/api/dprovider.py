@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
 from datetime import datetime, date
 from model.data_provider_model import Event
-from queuemq.broker import rabbitmq_broker
 from database.mongodb import find
+from queuemq.broker import rabbitmq_broker
 import os
 import json
 
@@ -20,8 +20,8 @@ async def get_events(
     updated__lte: Optional[datetime] = Query(None),
     rpg_status: Optional[int] = Query(None),
     room_id: Optional[int] = Query(None),
-    night_of_stay__gte: Optional[str] = Query(None),
-    night_of_stay__lte: Optional[str] = Query(None)
+    night_of_stay__gte: Optional[date] = Query(None),
+    night_of_stay__lte: Optional[date] = Query(None)
 ):
     query = {"hotel_id": hotel_id}
 
@@ -41,15 +41,29 @@ async def get_events(
     if night_of_stay__gte or night_of_stay__lte:
         query["night_of_stay"] = {}
         if night_of_stay__gte:
-            query["night_of_stay"]["$gte"] = night_of_stay__gte
+            query["night_of_stay"]["$gte"] = night_of_stay__gte.isoformat()
         if night_of_stay__lte:
-            query["night_of_stay"]["$lte"] = night_of_stay__lte
+            query["night_of_stay"]["$lte"] = night_of_stay__lte.isoformat()
 
     collection = os.getenv("MONGODB_COLLECTION")
     events = await find(collection, query)
-    for event in events:
-        event["night_of_stay"] = date.fromisoformat(event["night_of_stay"])
-    return [Event(**event) for event in events]
+    
+    def get_timestamp(event):
+        timestamp = event['timestamp']
+        if isinstance(timestamp, str):
+            dt = datetime.fromisoformat(timestamp.rstrip('Z'))
+        else:
+            dt = timestamp
+        return dt.replace(tzinfo=None)
+
+    sorted_events = sorted(events, key=get_timestamp)
+    
+    for event in sorted_events:
+        if isinstance(event['night_of_stay'], str):
+            event['night_of_stay'] = date.fromisoformat(event['night_of_stay'])
+        event['timestamp'] = get_timestamp(event)  
+    
+    return [Event(**event) for event in sorted_events]
 
 class DateTimeEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -62,8 +76,10 @@ async def create_event(event: Event):
     try:
         event_dict = event.dict()
         
+        # Serialize the event_dict to JSON, handling datetime objects
         event_json = json.dumps(event_dict, cls=DateTimeEncoder)
         
+        # Publish event to RabbitMQ
         try:
             await rabbitmq_broker.publish(event_json, str(event_dict["id"]))
             return event
