@@ -12,9 +12,13 @@ class MongoDB:
 db = MongoDB()
 
 def connect_to_mongo():
-    db.client = MongoClient(os.getenv("MONGODB_URL"))
-    db.db = db.client[os.getenv("MONGODB_DB")]
-    print("Successfully connected to MongoDB")
+    try:
+        db.client = MongoClient(os.getenv("MONGODB_URL"))
+        db.db = db.client[os.getenv("MONGODB_DB")]
+        print("Successfully connected to MongoDB")
+    except Exception as e:
+        print(f"Failed to connect to MongoDB: {str(e)}")
+        raise
 
 def close_mongo_connection():
     if db.client:

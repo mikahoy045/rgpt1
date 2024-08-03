@@ -3,6 +3,7 @@ print(f"Python version: {sys.version}")
 print(f"Python executable: {sys.executable}")
 
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 import asyncio
 from api.dprovider import router as dprovider_router
 from database.mongodb import connect_to_mongo, close_mongo_connection
@@ -12,12 +13,10 @@ from event.provider_consumer import start_consuming
 
 load_dotenv()
 
-app = FastAPI()
-
 consumer_task = None
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     global consumer_task
     connect_to_mongo()
     try:
@@ -27,10 +26,9 @@ async def startup_event():
     except Exception as e:
         print(f"Failed to connect to RabbitMQ: {str(e)}")
         print("The application will continue without RabbitMQ connection.")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    global consumer_task
+    
+    yield
+    
     close_mongo_connection()
     await rabbitmq_broker.close()
     if consumer_task:
@@ -39,6 +37,8 @@ async def shutdown_event():
             await consumer_task
         except asyncio.CancelledError:
             print("Consumer task cancelled")
+
+app = FastAPI(lifespan=lifespan)
 
 app.include_router(dprovider_router)
 

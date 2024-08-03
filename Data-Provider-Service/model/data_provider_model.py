@@ -10,7 +10,7 @@ class Event(BaseModel):
     room_id: int
     night_of_stay: date
 
-    class Config:
+    class ConfigDict:
         json_encoders = {
             date: lambda v: v.isoformat(),
         }
@@ -23,3 +23,6 @@ class Event(BaseModel):
                 "night_of_stay": "2020-01-01",
             }
         }
+
+    def dict(self, *args, **kwargs):
+        return self.model_dump(*args, **kwargs)
