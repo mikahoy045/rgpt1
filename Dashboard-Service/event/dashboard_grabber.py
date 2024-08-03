@@ -1,66 +1,98 @@
 import asyncio
 import httpx
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import UpdateOne
+from pymongo.errors import BulkWriteError
 import os
-from pathlib import Path
 from dotenv import load_dotenv
-
-# Get the path to the Dashboard-Service directory
-# dashboard_service_dir = Path(__file__).resolve().parent.parent
-
-# # Load the .env file from the Dashboard-Service directory
-# load_dotenv(dashboard_service_dir / '.env')
+import logging
+import traceback
 
 load_dotenv()
-
 
 DATA_PROVIDER_URL = os.getenv("DATA_PROVIDER_URL", "http://localhost:8000")
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
 MONGODB_DB = os.getenv("MONGODB_DB", "dashboard_db")
 MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION_DASHBOARD", "bookings")
 
-print(f"MONGODB_COLLECTION: {MONGODB_COLLECTION}")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 async def fetch_events(start_date, end_date):
     async with httpx.AsyncClient() as client:
         params = {
-            "hotel_id": "1",  # Changed to string
-            "updated__gte": start_date.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
-            "updated__lte": end_date.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            "night_of_stay__gte": start_date.strftime("%Y-%m-%d"),
+            "night_of_stay__lte": end_date.strftime("%Y-%m-%d"),
+            "rpg_status": 1
         }
         response = await client.get(f"{DATA_PROVIDER_URL}/events", params=params)
         response.raise_for_status()
         return response.json()
 
-async def update_database(client, events):
+async def update_database(client, events, year):
     db = client[MONGODB_DB]
     collection = db[MONGODB_COLLECTION]
+    
+    # If it's the current year, delete existing data first
+    if year == datetime.utcnow().year:
+        await collection.delete_many({"year": year})
+    
+    daily_bookings = {}
+    monthly_bookings = {}
+    
     for event in events:
         event_date = datetime.fromisoformat(event['night_of_stay'].replace('Z', '+00:00'))
-        doc = {
-            "hotel_id": event['hotel_id'],
-            "year": event_date.year,
-            "date": event_date.date().isoformat(),
-            "timestamp": event_date
-        }
-        await collection.update_one(
-            {"hotel_id": doc["hotel_id"], "timestamp": doc["timestamp"]},
-            {"$setOnInsert": doc},
-            upsert=True
-        )
+        hotel_id = event['hotel_id']
+        date_key = event_date.strftime("%Y-%m-%d")
+        month_key = event_date.strftime("%Y-%m")
+        
+        if hotel_id not in daily_bookings:
+            daily_bookings[hotel_id] = {}
+        if hotel_id not in monthly_bookings:
+            monthly_bookings[hotel_id] = {}
+        
+        daily_bookings[hotel_id][date_key] = daily_bookings[hotel_id].get(date_key, 0) + 1
+        monthly_bookings[hotel_id][month_key] = monthly_bookings[hotel_id].get(month_key, 0) + 1
+    
+    operations = []
+    for hotel_id in daily_bookings:
+        for date, count in daily_bookings[hotel_id].items():
+            operations.append(
+                UpdateOne(
+                    {"hotel_id": hotel_id, "date": date, "type": "daily"},
+                    {"$set": {"count": count, "year": year}},
+                    upsert=True
+                )
+            )
+        for month, count in monthly_bookings[hotel_id].items():
+            operations.append(
+                UpdateOne(
+                    {"hotel_id": hotel_id, "date": month, "type": "monthly"},
+                    {"$set": {"count": count, "year": year}},
+                    upsert=True
+                )
+            )
+    
+    if operations:
+        try:
+            result = await collection.bulk_write(operations, ordered=False)
+            logger.info(f"Bulk write result for year {year}: {result.bulk_api_result}")
+        except BulkWriteError as bwe:
+            logger.error(f"Bulk write error for year {year}: {bwe.details}")
+    else:
+        logger.info(f"No operations to perform for year {year}")
 
-async def get_years_to_fetch(collection, now):
-    years_to_fetch = []
-    for years_ago in range(5, -1, -1):  # Include current year
-        year = now.year - years_ago
-        year_start = datetime(year, 1, 1)
-        year_data = await collection.find_one({"year": year})
-        if not year_data:
-            years_to_fetch.append(year)
-        elif year == now.year:  # Always fetch current year
-            years_to_fetch.append(year)
-    return years_to_fetch
+async def get_years_to_process(collection):
+    current_year = datetime.utcnow().year
+    years_to_process = [current_year]  # Always process current year
+    
+    for year in range(current_year - 1, current_year - 5, -1):
+        count = await collection.count_documents({"year": year})
+        if count == 0:
+            years_to_process.append(year)
+    
+    return sorted(years_to_process)
 
 async def dashboard_grabber():
     client = AsyncIOMotorClient(MONGODB_URL)
@@ -70,30 +102,32 @@ async def dashboard_grabber():
             db = client[MONGODB_DB]
             collection = db[MONGODB_COLLECTION]
             
-            years_to_fetch = await get_years_to_fetch(collection, now)
+            years_to_process = await get_years_to_process(collection)
             
-            for year in years_to_fetch:
+            for year in years_to_process:
                 start_date = datetime(year, 1, 1)
                 end_date = min(datetime(year, 12, 31, 23, 59, 59), now)
                 
-                print(f"Fetching events for year {year} from {start_date} to {end_date}")
+                logger.info(f"Fetching events for year {year} from {start_date} to {end_date}")
                 
                 try:
                     events = await fetch_events(start_date, end_date)
                     if events:
-                        await update_database(client, events)
-                        print(f"Updated database with {len(events)} events for year {year}")
+                        await update_database(client, events, year)
+                        logger.info(f"Updated database with {len(events)} events for year {year}")
                     else:
-                        print(f"No events to update for year {year}")
+                        logger.info(f"No events to update for year {year}")
                 except httpx.HTTPStatusError as e:
-                    print(f"HTTP error occurred: {e}")
-                    print(f"Response text: {e.response.text}")
+                    logger.error(f"HTTP error occurred: {e}")
+                    logger.error(f"Response text: {e.response.text}")
                 except Exception as e:
-                    print(f"Error during fetch or update: {str(e)}")
+                    logger.error(f"Error during fetch or update: {str(e)}")
+                    logger.error(f"Traceback: {traceback.format_exc()}")
             
-            await asyncio.sleep(30)  # Sleep for 60 minutes
+            await asyncio.sleep(3600)  # Sleep for 60 minutes
     except Exception as e:
-        print(f"An error occurred in the main loop: {str(e)}")
+        logger.error(f"An error occurred in the main loop: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
     finally:
         client.close()
 
@@ -102,7 +136,7 @@ def main():
     try:
         loop.run_until_complete(dashboard_grabber())
     except KeyboardInterrupt:
-        print("Dashboard grabber stopped by user")
+        logger.info("Dashboard grabber stopped by user")
     finally:
         loop.close()
 
