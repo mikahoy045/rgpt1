@@ -32,9 +32,26 @@ async def callback(message):
     event_dict = json.loads(json.dumps(event.dict(), cls=DateTimeEncoder))
     
     collection = os.getenv("MONGODB_COLLECTION")
-    result = await insert_one(collection, event_dict)
-    logger.info(f"Saved event with ID: {result.inserted_id}")
-    print(f"Saved event with ID: {result.inserted_id}")
+    max_retries = 5
+    retry_delay = 1  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            result = await asyncio.wait_for(insert_one(collection, event_dict), timeout=5.0)
+            logger.info(f"Saved event with ID: {result.inserted_id}")
+            print(f"Saved event with ID: {result.inserted_id}")
+            break
+        except asyncio.TimeoutError:
+            if attempt < max_retries - 1:
+                logger.warning(f"Timeout occurred. Retrying... (Attempt {attempt + 1}/{max_retries})")
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error("Max retries reached. Failed to save event.")
+                print("Failed to save event due to timeout.")
+        except Exception as e:
+            logger.error(f"Error saving event: {str(e)}")
+            print(f"Error saving event: {str(e)}")
+            break
 
 async def start_consuming():
     try:

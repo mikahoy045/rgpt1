@@ -7,7 +7,7 @@ class Event(BaseModel):
     hotel_id: int
     timestamp: datetime
     rpg_status: int = Field(..., ge=1, le=2)
-    room_id: int
+    room_id: str
     night_of_stay: date
 
     class ConfigDict:

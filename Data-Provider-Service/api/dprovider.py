@@ -19,7 +19,7 @@ async def get_events(
     updated__gte: Optional[datetime] = Query(None),
     updated__lte: Optional[datetime] = Query(None),
     rpg_status: Optional[int] = Query(None),
-    room_id: Optional[int] = Query(None),
+    room_id: Optional[str] = Query(None),
     night_of_stay__gte: Optional[date] = Query(None),
     night_of_stay__lte: Optional[date] = Query(None)
 ):
