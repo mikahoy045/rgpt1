@@ -39,7 +39,7 @@ async def find(collection, query):
     return await run_mongo_task(lambda: list(db.db[collection].find(query)))
 
 async def get_dashboard_data(hotel_id: str, period: str, year: int) -> DashboardResponse:
-    collection = os.getenv("MONGODB_COLLECTION")
+    collection = os.getenv("MONGODB_COLLECTION_DASHBOARD")
     
     pipeline = [
         {"$match": {"hotel_id": hotel_id, "year": year}},

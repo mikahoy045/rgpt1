@@ -14,7 +14,7 @@ load_dotenv()
 
 async def setup_mongodb():
     mongodb_db = os.getenv("MONGODB_DB")
-    mongodb_collection = os.getenv("MONGODB_COLLECTION")
+    mongodb_collection = os.getenv("MONGODB_COLLECTION_DASHBOARD")
     
     if mongodb_db not in db.client.list_database_names():
         print(f"Creating database: {mongodb_db}")

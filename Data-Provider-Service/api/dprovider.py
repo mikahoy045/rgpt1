@@ -15,7 +15,7 @@ def read_root():
 
 @router.get("/events", response_model=List[Event])
 async def get_events(
-    hotel_id: int,
+    hotel_id: Optional[int] = Query(None),
     updated__gte: Optional[datetime] = Query(None),
     updated__lte: Optional[datetime] = Query(None),
     rpg_status: Optional[int] = Query(None),
@@ -23,7 +23,10 @@ async def get_events(
     night_of_stay__gte: Optional[date] = Query(None),
     night_of_stay__lte: Optional[date] = Query(None)
 ):
-    query = {"hotel_id": hotel_id}
+    query = {}
+
+    if hotel_id is not None:
+        query["hotel_id"] = hotel_id
 
     if updated__gte or updated__lte:
         query["timestamp"] = {}
