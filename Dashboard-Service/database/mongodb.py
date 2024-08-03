@@ -51,12 +51,13 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
 
     pipeline = [
         {"$match": query},
+        {"$unwind": "$details"},
         {"$group": {
             "_id": "$date",
             "total": {"$sum": "$count"},
             "detail": {"$push": {
                 "id": {"$toString": "$_id"},
-                "room_id": {"$ifNull": ["$room_id", "unknown"]},
+                "room_id": "$details.room_id",
                 "night_of_stay": "$date"
             }}
         }},
@@ -82,12 +83,13 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
         
         monthly_pipeline = [
             {"$match": monthly_query},
+            {"$unwind": "$details"},
             {"$group": {
                 "_id": {"$substr": ["$date", 0, 7]},  # Group by YYYY-MM
                 "total": {"$sum": "$count"},
                 "details": {"$push": {
                     "id": {"$toString": "$_id"},
-                    "room_id": {"$ifNull": ["$room_id", "unknown"]},
+                    "room_id": "$details.room_id",
                     "night_of_stay": "$date"
                 }}
             }},
@@ -116,12 +118,13 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
         
         daily_pipeline = [
             {"$match": daily_query},
+            {"$unwind": "$details"},
             {"$group": {
                 "_id": "$date",
                 "total": {"$sum": "$count"},
                 "detail": {"$push": {
                     "id": {"$toString": "$_id"},
-                    "room_id": {"$ifNull": ["$room_id", "unknown"]},
+                    "room_id": "$details.room_id",
                     "night_of_stay": "$date"
                 }}
             }},
@@ -130,12 +133,13 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
         
         monthly_pipeline = [
             {"$match": monthly_query},
+            {"$unwind": "$details"},
             {"$group": {
                 "_id": {"$substr": ["$date", 0, 7]},  # Group by YYYY-MM
                 "total": {"$sum": "$count"},
                 "details": {"$push": {
                     "id": {"$toString": "$_id"},
-                    "room_id": {"$ifNull": ["$room_id", "unknown"]},
+                    "room_id": "$details.room_id",
                     "night_of_stay": "$date"
                 }}
             }},

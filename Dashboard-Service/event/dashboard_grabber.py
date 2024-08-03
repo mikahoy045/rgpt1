@@ -52,16 +52,27 @@ async def update_database(client, events, year):
         if hotel_id not in monthly_bookings:
             monthly_bookings[hotel_id] = {}
         
-        daily_bookings[hotel_id][date_key] = daily_bookings[hotel_id].get(date_key, 0) + 1
+        if date_key not in daily_bookings[hotel_id]:
+            daily_bookings[hotel_id][date_key] = {"count": 0, "details": []}
+        daily_bookings[hotel_id][date_key]["count"] += 1
+        daily_bookings[hotel_id][date_key]["details"].append({
+            "_id": str(event['id']),
+            "room_id": event['room_id']
+        })
+        
         monthly_bookings[hotel_id][month_key] = monthly_bookings[hotel_id].get(month_key, 0) + 1
     
     operations = []
     for hotel_id in daily_bookings:
-        for date, count in daily_bookings[hotel_id].items():
+        for date, data in daily_bookings[hotel_id].items():
             operations.append(
                 UpdateOne(
                     {"hotel_id": hotel_id, "date": date, "type": "daily"},
-                    {"$set": {"count": count, "year": year}},
+                    {"$set": {
+                        "count": data["count"],
+                        "year": year,
+                        "details": data["details"]
+                    }},
                     upsert=True
                 )
             )
