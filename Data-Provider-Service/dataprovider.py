@@ -95,7 +95,40 @@ async def lifespan(app: FastAPI):
         except asyncio.CancelledError:
             print("Consumer task cancelled")
 
-app = FastAPI(lifespan=lifespan)
+description = """
+Data Provider Service. 🚀
+
+## Root
+
+Root endpoint.
+
+## Event
+
+You will be able to:
+
+* **Get Event Data**.
+* **Input Event Data**.
+"""
+
+tags_metadata = [
+    {
+        "name": "get_event",
+        "description": "Operations for getting event data.",
+    },
+    {   
+        "name": "input_event",
+        "description": "Operations for inputting event data.",
+    }
+]
+
+app = FastAPI(lifespan=lifespan, docs_url="/documentation", openapi_tags=tags_metadata, title="Data Provider Service Room Price Genie",
+              description=description,
+              summary="Blankontech Take Home Test.",
+              version="0.0.1",
+              contact={
+                  "name": "Event Service",
+                  "url": "http://localhost:8000"
+            })
 
 app.include_router(dprovider_router)
 

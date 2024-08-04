@@ -9,7 +9,7 @@ router = APIRouter()
 def read_root():
     return {"Hello": "Data Provider"}
 
-@router.get("/dashboard", response_model=DashboardResponse)
+@router.get("/dashboard", response_model=DashboardResponse, tags=["dashboard"])
 async def get_dashboard(
     hotel_id: int = Query(..., description="The ID of the hotel"),
     period: str = Query(..., description="The period of the dashboard (day, month, or day+month)"),

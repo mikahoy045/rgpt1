@@ -61,7 +61,36 @@ async def lifespan(app: FastAPI):
     # Shutdown
     close_mongo_connection()
 
-app = FastAPI(lifespan=lifespan)
+description = """
+Dashboard Service. 🚀
+
+## Root
+
+Root endpoint.
+
+## Dashboard
+
+You will be able to:
+
+* **Get Dashboard Data**.
+"""
+
+tags_metadata = [
+    {
+        "name": "dashboard",
+        "description": "Operations for dashboard data.",
+    },
+]
+
+app = FastAPI(lifespan=lifespan, docs_url="/documentation", openapi_tags=tags_metadata, title="Dashboard Service Room Price Genie",
+              description=description,
+              summary="Blankontech Take Home Test.",
+              version="0.0.1",
+              contact={
+                  "name": "Dashboard Service",
+                  "url": "http://localhost:7777"
+            }
+)
 
 app.include_router(dash_router)
 

@@ -13,15 +13,15 @@ router = APIRouter()
 def read_root():
     return {"Hello": "Data Provider"}
 
-@router.get("/events", response_model=List[Event])
+@router.get("/events", response_model=List[Event], tags=["get_event"])
 async def get_events(
-    hotel_id: Optional[int] = Query(None),
-    updated__gte: Optional[datetime] = Query(None),
-    updated__lte: Optional[datetime] = Query(None),
-    rpg_status: Optional[int] = Query(None),
-    room_id: Optional[str] = Query(None),
-    night_of_stay__gte: Optional[date] = Query(None),
-    night_of_stay__lte: Optional[date] = Query(None)
+    hotel_id: Optional[int] = Query(None, description="Filter events by hotel ID"),
+    updated__gte: Optional[datetime] = Query(None, description="Filter events updated on or after this datetime"),
+    updated__lte: Optional[datetime] = Query(None, description="Filter events updated on or before this datetime"),
+    rpg_status: Optional[int] = Query(None, description="Filter events by RPG status"),
+    room_id: Optional[str] = Query(None, description="Filter events by room ID"),
+    night_of_stay__gte: Optional[date] = Query(None, description="Filter events with night of stay on or after this date"),
+    night_of_stay__lte: Optional[date] = Query(None, description="Filter events with night of stay on or before this date")
 ):
     query = {}
 
@@ -62,7 +62,7 @@ class DateTimeEncoder(json.JSONEncoder):
             return obj.isoformat()
         return json.JSONEncoder.default(self, obj)
 
-@router.post("/events", response_model=Event)
+@router.post("/events", response_model=Event, tags=["input_event"])
 async def create_event(event: Event):
     try:
         event_dict = event.dict()
