@@ -140,5 +140,8 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
             hotel_id=hotel_id,
             period="daily+monthly",
             year=year,
-            detail=[bookings, monthly_bookings]
+            detail={
+                "daily": bookings,
+                "monthly": monthly_bookings
+            }
         )

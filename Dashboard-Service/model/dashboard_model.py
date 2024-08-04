@@ -15,7 +15,8 @@ class DashboardResponse(BaseModel):
     hotel_id: int
     period: str
     year: int
-    detail: Optional[Dict[str, BookingData]] = None
+    # detail: Optional[Dict[str, BookingData]] = None
+    detail: Optional[Dict[str, Dict[str, BookingData]]] = None
     detail_daily: Optional[Dict[str, BookingData]] = None
     detail_monthly: Optional[Dict[str, BookingData]] = None
 
