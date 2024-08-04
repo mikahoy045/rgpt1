@@ -48,7 +48,8 @@ params = {
 it will gather data per year, from 5 years ago to current year. Data found will be aggregated per year.
 
 ## PREPARATION
-rename .env.example (in root directory) to .env to set the environment variables
+- rename .env.example (in root directory) to .env to set the environment variables
+- modify the ip in the .env file to localhost if you are running the services locally and manually
 
 ## RUN SERVICES WITHIN DOCKER
 ```bash
