@@ -1,4 +1,4 @@
-version: '3.8'
+name: rpgt
 
 services:
   rabbitmq:
@@ -9,6 +9,11 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongodb:
     image: mongo:latest
@@ -35,8 +40,11 @@ services:
       - RABBITMQ_ROUTING_KEY=${RABBITMQ_ROUTING_KEY}
       - RABBITMQ_QUEUE=${RABBITMQ_QUEUE}
     depends_on:
-      - mongodb
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+    restart: on-failure
 
   data-provider:
     build:

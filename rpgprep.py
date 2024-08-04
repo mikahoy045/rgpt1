@@ -46,26 +46,41 @@ async def setup_mongodb():
     client.close()
 
 async def setup_rabbitmq():
-    connection = await aio_pika.connect_robust(
-        f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASS}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/"
-    )
+    max_retries = 5
+    retry_delay = 5  # seconds
 
-    async with connection:
-        channel = await connection.channel()
+    for attempt in range(max_retries):
+        try:
+            connection = await aio_pika.connect_robust(
+                f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASS}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/"
+            )
 
-        # Declare exchange
-        exchange = await channel.declare_exchange(
-            RABBITMQ_EXCHANGE, aio_pika.ExchangeType.DIRECT, durable=True
-        )
-        print(f"Declared exchange: {RABBITMQ_EXCHANGE}")
+            async with connection:
+                channel = await connection.channel()
 
-        # Declare queue
-        queue = await channel.declare_queue(RABBITMQ_QUEUE, durable=True)
-        print(f"Declared queue: {RABBITMQ_QUEUE}")
+                # Declare exchange
+                exchange = await channel.declare_exchange(
+                    RABBITMQ_EXCHANGE, aio_pika.ExchangeType.DIRECT, durable=True
+                )
+                print(f"Declared exchange: {RABBITMQ_EXCHANGE}")
 
-        # Bind queue to exchange with routing key
-        await queue.bind(exchange, routing_key=RABBITMQ_ROUTING_KEY)
-        print(f"Bound queue {RABBITMQ_QUEUE} to exchange {RABBITMQ_EXCHANGE} with routing key {RABBITMQ_ROUTING_KEY}")
+                # Declare queue
+                queue = await channel.declare_queue(RABBITMQ_QUEUE, durable=True)
+                print(f"Declared queue: {RABBITMQ_QUEUE}")
+
+                # Bind queue to exchange with routing key
+                await queue.bind(exchange, routing_key=RABBITMQ_ROUTING_KEY)
+                print(f"Bound queue {RABBITMQ_QUEUE} to exchange {RABBITMQ_EXCHANGE} with routing key {RABBITMQ_ROUTING_KEY}")
+
+            return  # Successfully connected and set up RabbitMQ
+        except Exception as e:
+            print(f"Attempt {attempt + 1}/{max_retries} failed: {str(e)}")
+            if attempt < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+            else:
+                print("Max retries reached. Failed to set up RabbitMQ.")
+                raise
 
 async def main():
     print("Setting up MongoDB...")
