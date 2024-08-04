@@ -135,7 +135,7 @@ async def dashboard_grabber():
                     logger.error(f"Error during fetch or update: {str(e)}")
                     logger.error(f"Traceback: {traceback.format_exc()}")
             
-            await asyncio.sleep(3600)  # Sleep for 60 minutes
+            await asyncio.sleep(60)  # Sleep for 60 seconds
     except Exception as e:
         logger.error(f"An error occurred in the main loop: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
