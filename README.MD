@@ -36,6 +36,17 @@ Workflow:
 4. Event Storage:
    - MongoDB: Acts as the persistent storage for events. Both services can use MongoDB to store and query events efficiently, leveraging indexing.
 
+## Dashboard request Get
+Dashboard Service will request data from Data Provider Service via GET /events to get number of booking (per night of stay) as of bellow:
+```bash
+params = {
+    "night_of_stay__gte": start_date.strftime("%Y-%m-%d"),
+    "night_of_stay__lte": end_date.strftime("%Y-%m-%d"),
+    "rpg_status": 1
+}
+```
+it will take data per year, from 5 years ago to current year. Data found will be aggregated per year.
+
 ## Preparation
 rename .env.example to .env to set the environment variables
 
