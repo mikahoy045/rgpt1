@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import logging
 import traceback
 
-load_dotenv()
+load_dotenv(override=True)
 
 DATA_PROVIDER_URL = os.getenv("DATA_PROVIDER_URL", "http://localhost:8000")
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
@@ -99,7 +99,7 @@ async def update_database(client, events, year):
 
 async def get_years_to_process(collection):
     current_year = datetime.utcnow().year
-    
+
     # Only process the current year
     # years_to_process = [current_year]  
     # for year in range(current_year - 1, current_year - 5, -1):

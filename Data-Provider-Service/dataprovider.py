@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from event.provider_consumer import start_consuming
 from pymongo import ASCENDING
 
-load_dotenv()
+load_dotenv(override=True)
 
 consumer_task = None
 

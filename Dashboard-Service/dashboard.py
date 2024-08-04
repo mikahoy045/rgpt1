@@ -12,7 +12,7 @@ from pymongo import ASCENDING
 import asyncio
 from event.dashboard_grabber import dashboard_grabber
 
-load_dotenv()
+load_dotenv(override=True)
 
 async def setup_mongodb():
     mongodb_db = os.getenv("MONGODB_DB")
@@ -30,7 +30,8 @@ async def setup_mongodb():
     indexes_to_create = [
         ("hotel_id", ASCENDING),
         ("year", ASCENDING),
-        ("date", ASCENDING)
+        ("date", ASCENDING),
+        ("type", ASCENDING)
     ]
     
     existing_indexes = collection.index_information()

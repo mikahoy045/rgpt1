@@ -12,7 +12,7 @@ from database.mongodb import connect_to_mongo, close_mongo_connection, insert_on
 from model.data_provider_model import Event
 from queuemq.broker import rabbitmq_broker
 
-load_dotenv()
+load_dotenv(override=True)
 logger = logging.getLogger(__name__)
 
 class DateTimeEncoder(json.JSONEncoder):

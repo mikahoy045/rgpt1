@@ -6,7 +6,7 @@ from aio_pika import connect_robust, Message, ExchangeType
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
 
-load_dotenv()
+load_dotenv(override=True)
 
 # logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

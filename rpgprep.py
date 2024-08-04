@@ -4,7 +4,7 @@ from pymongo import MongoClient
 import aio_pika
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 # MongoDB configuration
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")

@@ -7,7 +7,7 @@ from model.dashboard_model import DashboardResponse, BookingData
 from bson import ObjectId
 from model.dashboard_model import EventDetail
 
-load_dotenv()
+load_dotenv(override=True)
 
 class MongoDB:
     client: MongoClient = None

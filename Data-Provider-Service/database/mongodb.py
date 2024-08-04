@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 import asyncio
 
-load_dotenv()
+load_dotenv(override=True)
 
 class MongoDB:
     client: MongoClient = None
