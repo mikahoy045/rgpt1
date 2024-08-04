@@ -30,15 +30,15 @@ async def fetch_events(start_date, end_date):
     
     async with httpx.AsyncClient() as client:
         params = {
-            "night_of_stay__gte": start_date.strftime("%Y-%m-%d"),
-            "night_of_stay__lte": end_date.strftime("%Y-%m-%d"),
+            "updated__gte": start_date.isoformat(),
+            "updated__lte": end_date.isoformat(),
             "rpg_status": 1
         }
         
         for attempt in range(max_retries):
             try:
                 data_provider_url = f"{DATA_PROVIDER_URL}/events"
-                logger.info(f"Fetching events from {start_date} to {end_date} from {data_provider_url}")
+                logger.info(f"Fetching events updated from {start_date} to {end_date} from {data_provider_url}")
                 response = await client.get(data_provider_url, params=params)
                 response.raise_for_status()
                 return response.json()

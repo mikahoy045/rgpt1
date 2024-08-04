@@ -40,12 +40,12 @@ Workflow:
 Dashboard Service will request data from Data Provider Service via GET /events to get number of booking (per night of stay) as of bellow:
 ```bash
 params = {
-    "night_of_stay__gte": start_date.strftime("%Y-%m-%d"),
-    "night_of_stay__lte": end_date.strftime("%Y-%m-%d"),
-    "rpg_status": 1
+   "updated__gte": start_date.isoformat(),
+   "updated__lte": end_date.isoformat(),
+   "rpg_status": 1
 }
 ```
-it will gather data per year, from 5 years ago to current year. Data found will be aggregated per year.
+I used updated params, since it will calculate from the booking timestamps and rpg_status = 1 to filter only booked rooms. It will gather data per year, from 5 years ago to current year. Data found will be aggregated per year.
 
 ## PREPARATION
 - rename .env.example (in root directory) to .env to set the environment variables
@@ -96,7 +96,7 @@ python Simulator/hotel_order_simulator.py
 pytest tests/test_dprovider.py
 ```
 
-## DOCUMENTATION
+## API DOCUMENTATION
 ### Data Provider Service
 ```bash
 http://localhost:8000/documentation
@@ -106,3 +106,25 @@ http://localhost:8000/documentation
 ```bash
 http://localhost:7777/documentation
 ```  
+
+## ACCESS
+### Data Provider Service
+```bash
+http://localhost:8000/events
+```
+
+### Dashboard Service
+```bash
+http://localhost:7777/dashboard
+```
+
+### RabbitMQ
+```bash
+http://localhost:15672
+```
+
+### MongoDB
+Using MongoDB Compass
+```bash
+mongodb://admin:donanobispacem@172.30.0.2:27017
+```
