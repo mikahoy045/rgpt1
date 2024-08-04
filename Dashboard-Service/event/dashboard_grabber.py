@@ -1,6 +1,6 @@
 import asyncio
-from datetime import datetime, timedelta
 import httpx
+from datetime import datetime, timedelta
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import UpdateOne
 from pymongo.errors import BulkWriteError
@@ -19,19 +19,14 @@ MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION_DASHBOARD", "bookings")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def fetch_events(year):
-    start_date = datetime(year, 1, 1)
-    end_date = min(datetime(year, 12, 31, 23, 59, 59), datetime.utcnow())
-    
+async def fetch_events(start_date, end_date):
     async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{DATA_PROVIDER_URL}/events",
-            params={
-                "night_of_stay__gte": start_date.date().isoformat(),
-                "night_of_stay__lte": end_date.date().isoformat(),
-                "rpg_status": 1
-            }
-        )
+        params = {
+            "night_of_stay__gte": start_date.strftime("%Y-%m-%d"),
+            "night_of_stay__lte": end_date.strftime("%Y-%m-%d"),
+            "rpg_status": 1
+        }
+        response = await client.get(f"{DATA_PROVIDER_URL}/events", params=params)
         response.raise_for_status()
         return response.json()
 
@@ -147,14 +142,11 @@ async def dashboard_grabber():
     finally:
         client.close()
 
-def main():
-    loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(dashboard_grabber())
-    except KeyboardInterrupt:
-        logger.info("Dashboard grabber stopped by user")
-    finally:
-        loop.close()
-
-if __name__ == "__main__":
-    main()
+async def start_dashboard_grabber():
+    while True:
+        try:
+            await dashboard_grabber()
+        except Exception as e:
+            logger.error(f"Error in dashboard_grabber: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+        await asyncio.sleep(3600)  # Run every hour
