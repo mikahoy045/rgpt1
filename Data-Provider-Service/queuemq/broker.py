@@ -32,24 +32,34 @@ class RabbitMQBroker:
         # logger.debug(f"RabbitMQ URL: amqp://{encoded_user}:******@{self.host}:{self.port}/")
 
     async def connect(self):
-        try:
-            logger.info("Attempting to connect to RabbitMQ...")
-            self.connection = await connect_robust(self.url)
-            self.channel = await self.connection.channel()
-            
-            self.exchange = await self.channel.declare_exchange(
-                self.exchange_name, 
-                ExchangeType.DIRECT,
-                durable=True
-            )
-            
-            self.queue = await self.channel.declare_queue(self.queue_name, durable=True)
-            await self.queue.bind(self.exchange, routing_key=self.routing_key)
-            
-            logger.info(f"Successfully connected to RabbitMQ at {self.host}:{self.port}")
-        except Exception as e:
-            logger.error(f"Failed to connect to RabbitMQ: {str(e)}", exc_info=True)
-            raise
+        max_retries = 10
+        retry_delay = 5
+
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Attempting to connect to RabbitMQ (attempt {attempt + 1}/{max_retries})...")
+                self.connection = await connect_robust(self.url)
+                self.channel = await self.connection.channel()
+                
+                self.exchange = await self.channel.declare_exchange(
+                    self.exchange_name, 
+                    ExchangeType.DIRECT,
+                    durable=True
+                )
+                
+                self.queue = await self.channel.declare_queue(self.queue_name, durable=True)
+                await self.queue.bind(self.exchange, routing_key=self.routing_key)
+                
+                logger.info(f"Successfully connected to RabbitMQ at {self.host}:{self.port}")
+                break
+            except Exception as e:
+                logger.error(f"Failed to connect to RabbitMQ (attempt {attempt + 1}/{max_retries}): {str(e)}", exc_info=True)
+                if attempt < max_retries - 1:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    await asyncio.sleep(retry_delay)
+                else:
+                    logger.error(f"Max retries reached. Unable to connect to RabbitMQ. Error: {e}", exc_info=True)
+                    raise
 
     async def publish(self, message: str, correlation_id: str = None):
         if not self.connection or self.connection.is_closed:

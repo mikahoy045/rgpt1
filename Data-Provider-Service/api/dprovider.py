@@ -13,6 +13,11 @@ router = APIRouter()
 def read_root():
     return {"Hello": "Data Provider"}
 
+# this is for docker depends healthcheck
+@router.get("/health")
+def read_health():
+    return {"status": "ok"}, 200
+
 @router.get("/events", response_model=List[Event], tags=["get_event"])
 async def get_events(
     hotel_id: Optional[int] = Query(None, description="Filter events by hotel ID"),

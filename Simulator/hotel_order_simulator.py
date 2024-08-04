@@ -35,14 +35,26 @@ def map_csv_to_post_data(csv_row):
     }
 
 async def send_order(session, order):
-    print(f"Sending order to URL: {DATA_PROVIDER_URL}")
-    print(f"Sending order: {order}")
-    async with session.post(DATA_PROVIDER_URL, json=order) as response:
-        response_text = await response.text()
-        print(f"Response status: {response.status}")
-        print(f"Response headers: {response.headers}")
-        print(f"Response body: {response_text}")
-        return response_text
+    logging.info(f"Sending order to URL: {DATA_PROVIDER_URL}")
+    logging.info(f"Sending order: {order}")
+    max_retries = 10
+    retry_delay = 5
+    for attempt in range(max_retries):
+        try:
+            async with session.post(DATA_PROVIDER_URL, json=order) as response:
+                response_text = await response.text()
+                logging.info(f"Response status: {response.status}")
+                logging.info(f"Response headers: {response.headers}")
+                logging.info(f"Response body: {response_text}")
+                response.raise_for_status()
+                return response_text
+        except aiohttp.ClientError as e:
+            if attempt < max_retries - 1:
+                logging.error(f"Error occurred: {str(e)}. Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+            else:
+                logging.error(f"Max retries reached. Failed to send order after {max_retries} attempts.")
+                raise
 
 async def simulate_orders(csv_data):
     data_index = 0

@@ -87,6 +87,12 @@ services:
       rabbitmq:
         condition: service_healthy
     restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       rpgt_network:
         ipv4_address: 172.30.0.5
@@ -104,7 +110,9 @@ services:
       - DATA_PROVIDER_URL=http://172.30.0.5:8000
       - PYTHONPATH=/app/Dashboard-Service
     depends_on:
-      - data-provider
+      data-provider:
+        condition: service_healthy
+    restart: on-failure
     networks:
       rpgt_network:
         ipv4_address: 172.30.0.6
@@ -139,7 +147,8 @@ services:
       - RABBITMQ_ROUTING_KEY=${RABBITMQ_ROUTING_KEY}
       - RABBITMQ_QUEUE=${RABBITMQ_QUEUE}
     depends_on:
-      - data-provider
+      data-provider:
+        condition: service_healthy
     networks:
       rpgt_network:
         ipv4_address: 172.30.0.8

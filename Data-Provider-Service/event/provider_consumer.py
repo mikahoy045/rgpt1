@@ -54,12 +54,22 @@ async def callback(message):
             break
 
 async def start_consuming():
-    try:
-        await rabbitmq_broker.consume(callback)
-    except asyncio.CancelledError:
-        logger.error("Consumer was cancelled")
-    except Exception as e:
-        logger.error(f"Error in consumer: {str(e)}")
+    max_retries = 10
+    retry_delay = 5
+
+    for attempt in range(max_retries):
+        try:
+            await rabbitmq_broker.consume(callback)
+        except asyncio.CancelledError:
+            logger.error("Consumer was cancelled")
+            break
+        except Exception as e:
+            logger.error(f"Error in consumer (attempt {attempt + 1}/{max_retries}): {str(e)}")
+            if attempt < max_retries - 1:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error("Max retries reached. Giving up.")
 
 if __name__ == "__main__":
     connect_to_mongo()
