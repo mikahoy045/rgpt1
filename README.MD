@@ -52,13 +52,24 @@ it will gather data per year, from 5 years ago to current year. Data found will 
 - modify the ip in the .env file to localhost if you are running the services locally and manually
 
 ## RUN SERVICES WITHIN DOCKER
+Build the docker (You must be in the root directory)
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
+```
+
+Run the docker
+```bash
+docker compose up -d
+```
+
+Remove the docker
+```bash
+docker compose down -v
 ```
 
 ## TEST DATA PROVIDER WITHIN DOCKER
 ```bash
-docker-compose run data-provider-tests
+docker compose run data-provider-tests
 ```
 
 ## RUN SERVICES MANUALLY
