@@ -13,8 +13,8 @@ load_dotenv(override=True)
 
 DATA_PROVIDER_URL = os.getenv("DATA_PROVIDER_URL", "http://localhost:8000")
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
-MONGODB_DB = os.getenv("MONGODB_DB", "dashboard_db")
-MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION_DASHBOARD", "bookings")
+MONGODB_DB = os.getenv("MONGODB_DB", "rgpt")
+MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION_DASHBOARD", "dashboard")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

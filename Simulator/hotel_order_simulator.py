@@ -4,8 +4,11 @@ import asyncio
 import aiohttp
 import os
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 
-DATA_PROVIDER_URL = "http://localhost:8000/events"
+load_dotenv(override=True)
+
+DATA_PROVIDER_URL = os.getenv("DATA_PROVIDER_URL")+"/events"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_FILE_PATH = os.path.join(SCRIPT_DIR, "data.csv")
 SIMULATION_INTERVAL = (45, 75)

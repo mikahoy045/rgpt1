@@ -1,5 +1,5 @@
 # Room Price Genie Test 01
-## Architecture
+## ARCHITECTURE
 ### 1. Data Provider Service
 
 - Handles incoming booking and cancellation events.
@@ -20,7 +20,7 @@
 - Stores persistent data for both services.
 - Uses indexing for efficient querying.
 
-## Design Patterns
+## DESIGN PATTERNS
 Event-driven architecture is used as it allows services to communicate asynchronously via events. This pattern decouples the services and enables scalability and resilience.
 
 Workflow:
@@ -36,7 +36,7 @@ Workflow:
 4. Event Storage:
    - MongoDB: Acts as the persistent storage for events. Both services can use MongoDB to store and query events efficiently, leveraging indexing.
 
-## Dashboard request Get
+## DASHBOARD REQUEST EXPLANATION
 Dashboard Service will request data from Data Provider Service via GET /events to get number of booking (per night of stay) as of bellow:
 ```bash
 params = {
@@ -45,19 +45,29 @@ params = {
     "rpg_status": 1
 }
 ```
-it will take data per year, from 5 years ago to current year. Data found will be aggregated per year.
+it will gather data per year, from 5 years ago to current year. Data found will be aggregated per year.
 
-## Preparation
-rename .env.example to .env to set the environment variables
+## PREPARATION
+rename .env.example (in root directory) to .env to set the environment variables
 
-## Run Services Manually
-### RUN SERVICE DATA PROVIDER
+## RUN SERVICES WITHIN DOCKER
+```bash
+docker-compose up --build
+```
+
+## TEST DATA PROVIDER WITHIN DOCKER
+```bash
+docker-compose run data-provider-tests
+```
+
+## RUN SERVICES MANUALLY
+### Run Service Data Provider
 ```bash
 # cd Data-Provider-Service
 uvicorn dataprovider:app --reload --port 8000
 ```
 
-### RUN SERVICE DASHBOARD
+### Run Service Dashboard
 ```bash
 # cd Dashboard-Service
 uvicorn dashboard:app --reload --port 7777
@@ -74,7 +84,3 @@ python Simulator/hotel_order_simulator.py
 pytest tests/test_dprovider.py
 ```
 
-## Run Services with Docker
-```bash
-docker-compose up --build
-```

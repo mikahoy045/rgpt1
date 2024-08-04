@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  mongodb:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: donanobispacem
+    ports:
+      - "27017:27017"
+
+  rpgprep:
+    build:
+      context: .
+      dockerfile: Dockerfile.rpgprep
+    environment:
+      - MONGODB_URL=mongodb://admin:donanobispacem@mongodb:27017
+      - MONGODB_DB=${MONGODB_DB}
+      - MONGODB_COLLECTION=${MONGODB_COLLECTION}
+      - MONGODB_COLLECTION_DASHBOARD=${MONGODB_COLLECTION_DASHBOARD}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
+      - RABBITMQ_ROUTING_KEY=${RABBITMQ_ROUTING_KEY}
+      - RABBITMQ_QUEUE=${RABBITMQ_QUEUE}
+    depends_on:
+      - mongodb
+      - rabbitmq
+
+  data-provider:
+    build:
+      context: .
+      dockerfile: Dockerfile.data-provider
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://admin:donanobispacem@mongodb:27017
+      - MONGODB_DB=${MONGODB_DB}
+      - MONGODB_COLLECTION=${MONGODB_COLLECTION}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
+      - RABBITMQ_ROUTING_KEY=${RABBITMQ_ROUTING_KEY}
+      - RABBITMQ_QUEUE=${RABBITMQ_QUEUE}
+    depends_on:
+      - rpgprep
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    ports:
+      - "7777:7777"
+    environment:
+      - MONGODB_URL=mongodb://admin:donanobispacem@mongodb:27017
+      - MONGODB_DB=${MONGODB_DB}
+      - MONGODB_COLLECTION_DASHBOARD=${MONGODB_COLLECTION_DASHBOARD}
+      - DATA_PROVIDER_URL=http://data-provider:8000
+    depends_on:
+      - data-provider
+
+  simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile.simulator
+    environment:
+      - DATA_PROVIDER_URL=http://data-provider:8000
+    depends_on:
+      - dashboard
+
+  data-provider-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.data-provider
+    command: pytest Data-Provider-Service/tests/test_dprovider.py
+    environment:
+      - MONGODB_URL=mongodb://admin:donanobispacem@mongodb:27017
+      - MONGODB_DB=${MONGODB_DB}
+      - MONGODB_COLLECTION=${MONGODB_COLLECTION}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
+      - RABBITMQ_ROUTING_KEY=${RABBITMQ_ROUTING_KEY}
+      - RABBITMQ_QUEUE=${RABBITMQ_QUEUE}
+    depends_on:
+      - data-provider
