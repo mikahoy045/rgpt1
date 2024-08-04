@@ -36,6 +36,9 @@ Workflow:
 4. Event Storage:
    - MongoDB: Acts as the persistent storage for events. Both services can use MongoDB to store and query events efficiently, leveraging indexing.
 
+## Preparation
+rename .env.example to .env to set the environment variables
+
 ## Run Services Manually
 ### RUN SERVICE DATA PROVIDER
 ```bash
