@@ -9,6 +9,8 @@ from api.dash import router as dash_router
 from database.mongodb import connect_to_mongo, close_mongo_connection, db
 from dotenv import load_dotenv
 from pymongo import ASCENDING
+import asyncio
+from event.dashboard_grabber import dashboard_grabber
 
 load_dotenv()
 
@@ -41,13 +43,22 @@ async def setup_mongodb():
         else:
             print(f"Index already exists for field: {field}")
 
+async def start_dashboard_grabber():
+    while True:
+        try:
+            await dashboard_grabber()
+        except Exception as e:
+            print(f"Error in dashboard_grabber: {e}")
+        await asyncio.sleep(3600)  # Run every hour
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Startup
     connect_to_mongo()
     await setup_mongodb()
-    
+    asyncio.create_task(start_dashboard_grabber())
     yield
-    
+    # Shutdown
     close_mongo_connection()
 
 app = FastAPI(lifespan=lifespan)
@@ -56,4 +67,4 @@ app.include_router(dash_router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=7000)
+    uvicorn.run(app, host="0.0.0.0", port=7777)

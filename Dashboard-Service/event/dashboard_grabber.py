@@ -1,6 +1,6 @@
 import asyncio
-import httpx
 from datetime import datetime, timedelta
+import httpx
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import UpdateOne
 from pymongo.errors import BulkWriteError
@@ -19,14 +19,19 @@ MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION_DASHBOARD", "bookings")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def fetch_events(start_date, end_date):
+async def fetch_events(year):
+    start_date = datetime(year, 1, 1)
+    end_date = min(datetime(year, 12, 31, 23, 59, 59), datetime.utcnow())
+    
     async with httpx.AsyncClient() as client:
-        params = {
-            "night_of_stay__gte": start_date.strftime("%Y-%m-%d"),
-            "night_of_stay__lte": end_date.strftime("%Y-%m-%d"),
-            "rpg_status": 1
-        }
-        response = await client.get(f"{DATA_PROVIDER_URL}/events", params=params)
+        response = await client.get(
+            f"{DATA_PROVIDER_URL}/events",
+            params={
+                "night_of_stay__gte": start_date.date().isoformat(),
+                "night_of_stay__lte": end_date.date().isoformat(),
+                "rpg_status": 1
+            }
+        )
         response.raise_for_status()
         return response.json()
 
