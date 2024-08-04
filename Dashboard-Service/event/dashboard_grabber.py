@@ -34,9 +34,12 @@ async def update_database(client, events, year):
     db = client[MONGODB_DB]
     collection = db[MONGODB_COLLECTION]
     
-    # If it's the current year, delete existing data first
-    if year == datetime.utcnow().year:
-        await collection.delete_many({"year": year})
+    # Only process the current year
+    # if year == datetime.utcnow().year:
+    #     await collection.delete_many({"year": year})
+
+    # Re process all years
+    await collection.delete_many({"year": year})
     
     daily_bookings = {}
     monthly_bookings = {}
@@ -96,12 +99,18 @@ async def update_database(client, events, year):
 
 async def get_years_to_process(collection):
     current_year = datetime.utcnow().year
-    years_to_process = [current_year]  # Always process current year
     
-    for year in range(current_year - 1, current_year - 5, -1):
-        count = await collection.count_documents({"year": year})
-        if count == 0:
-            years_to_process.append(year)
+    # Only process the current year
+    # years_to_process = [current_year]  
+    # for year in range(current_year - 1, current_year - 5, -1):
+    #     count = await collection.count_documents({"year": year})
+    #     if count == 0:
+    #         years_to_process.append(year)
+
+    years_to_process = []
+    
+    for year in range(current_year, current_year - 5, -1):
+        years_to_process.append(year)
     
     return sorted(years_to_process)
 
