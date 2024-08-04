@@ -15,17 +15,10 @@ class DashboardResponse(BaseModel):
     hotel_id: int
     period: str
     year: int
-    # detail: Optional[Dict[str, BookingData]] = None
-    detail: Optional[Dict[str, Dict[str, BookingData]]] = None
-    detail_daily: Optional[Dict[str, BookingData]] = None
-    detail_monthly: Optional[Dict[str, BookingData]] = None
+    detail: Dict[str, Dict[str, BookingData]]
 
     class Config:
         json_encoders = {
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.isoformat(),
         }
-
-    def dict(self, *args, **kwargs):
-        d = super().dict(*args, **kwargs)
-        return {k: v for k, v in d.items() if v is not None and k != "detail_daily" and k != "detail_monthly"}

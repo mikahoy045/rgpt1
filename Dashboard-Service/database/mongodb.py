@@ -66,7 +66,7 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
 
     result = await run_mongo_task(lambda: list(db.db[collection].aggregate(pipeline)))
 
-    bookings = {
+    daily_bookings = {
         item["_id"]: BookingData(total=item["total"], detail=[EventDetail(**detail) for detail in item["detail"]])
         for item in result
     }
@@ -76,7 +76,7 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
             hotel_id=hotel_id,
             period="daily",
             year=year,
-            detail_daily=bookings
+            detail={"daily": daily_bookings}
         )
     elif period == "month":
         monthly_pipeline = [
@@ -108,40 +108,15 @@ async def get_dashboard_data(hotel_id: int, period: str, year: int) -> Dashboard
             hotel_id=hotel_id,
             period="monthly",
             year=year,
-            detail_monthly=monthly_bookings
+            detail={"monthly": monthly_bookings}
         )
     else:  # period == "day+month"
-        monthly_pipeline = [
-            {"$match": query},
-            {"$unwind": "$details"},
-            {"$group": {
-                "_id": {"$substr": ["$date", 0, 7]},  # Group by YYYY-MM
-                "total": {"$sum": "$count"},
-                "detail": {"$push": {
-                    "id": {"$toString": "$details._id"},
-                    "room_id": "$details.room_id",
-                    "night_of_stay": "$date"
-                }}
-            }},
-            {"$sort": {"_id": 1}}
-        ]
-        
-        monthly_result = await run_mongo_task(lambda: list(db.db[collection].aggregate(monthly_pipeline)))
-        
-        monthly_bookings = {
-            item["_id"]: BookingData(
-                total=item["total"], 
-                detail=[EventDetail(**detail) for detail in item["detail"]]
-            ) 
-            for item in monthly_result
-        }
-        
         return DashboardResponse(
             hotel_id=hotel_id,
             period="daily+monthly",
             year=year,
             detail={
-                "daily": bookings,
+                "daily": daily_bookings,
                 "monthly": monthly_bookings
             }
         )
