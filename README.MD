@@ -52,7 +52,7 @@ rename .env.example (in root directory) to .env to set the environment variables
 
 ## RUN SERVICES WITHIN DOCKER
 ```bash
-docker-compose up --build
+docker-compose up -d --build
 ```
 
 ## TEST DATA PROVIDER WITHIN DOCKER
@@ -84,3 +84,13 @@ python Simulator/hotel_order_simulator.py
 pytest tests/test_dprovider.py
 ```
 
+## DOCUMENTATION
+### Data Provider Service
+```bash
+http://localhost:8000/documentation
+```
+
+### Dashboard Service
+```bash
+http://localhost:7777/documentation
+```  

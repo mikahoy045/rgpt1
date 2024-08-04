@@ -11,24 +11,50 @@ import traceback
 
 load_dotenv(override=True)
 
-DATA_PROVIDER_URL = os.getenv("DATA_PROVIDER_URL", "http://localhost:8000")
-MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+DATA_PROVIDER_URL = os.getenv("DATA_PROVIDER_URL", "http://172.30.0.5:8000")
+MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://admin:donanobispacem@172.30.0.2:27017")
 MONGODB_DB = os.getenv("MONGODB_DB", "rgpt")
 MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION_DASHBOARD", "dashboard")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+logging.info(f"DATA_PROVIDER_URL: {DATA_PROVIDER_URL}")
+logging.info(f"MONGODB_URL: {MONGODB_URL}")
+logging.info(f"MONGODB_DB: {MONGODB_DB}")
+logging.info(f"MONGODB_COLLECTION: {MONGODB_COLLECTION}")
+
 async def fetch_events(start_date, end_date):
+    max_retries = 10
+    retry_delay = 5
+    
     async with httpx.AsyncClient() as client:
         params = {
             "night_of_stay__gte": start_date.strftime("%Y-%m-%d"),
             "night_of_stay__lte": end_date.strftime("%Y-%m-%d"),
             "rpg_status": 1
         }
-        response = await client.get(f"{DATA_PROVIDER_URL}/events", params=params)
-        response.raise_for_status()
-        return response.json()
+        
+        for attempt in range(max_retries):
+            try:
+                data_provider_url = f"{DATA_PROVIDER_URL}/events"
+                logger.info(f"Fetching events from {start_date} to {end_date} from {data_provider_url}")
+                response = await client.get(data_provider_url, params=params)
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"HTTP error occurred: {e}")
+                if attempt == max_retries - 1:
+                    raise
+            except httpx.RequestError as e:
+                logger.error(f"Request error occurred: {e}")
+                if attempt == max_retries - 1:
+                    raise
+            
+            logger.info(f"Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+            await asyncio.sleep(retry_delay)
+    
+    raise Exception("Failed to fetch events after maximum retries")
 
 async def update_database(client, events, year):
     db = client[MONGODB_DB]
