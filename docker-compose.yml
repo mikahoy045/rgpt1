@@ -14,6 +14,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      rpgt_network:
+        ipv4_address: 172.30.0.3
 
   mongodb:
     image: mongo:latest
@@ -22,17 +25,28 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: donanobispacem
     ports:
       - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh mongodb://admin:donanobispacem@172.30.0.2:27017/admin --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      rpgt_network:
+        ipv4_address: 172.30.0.2
 
   rpgprep:
     build:
       context: .
       dockerfile: Dockerfile.rpgprep
     environment:
-      - MONGODB_URL=mongodb://admin:donanobispacem@mongodb:27017
+      - MONGODB_URL=mongodb://admin:donanobispacem@172.30.0.2:27017
       - MONGODB_DB=${MONGODB_DB}
       - MONGODB_COLLECTION=${MONGODB_COLLECTION}
       - MONGODB_COLLECTION_DASHBOARD=${MONGODB_COLLECTION_DASHBOARD}
-      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_HOST=172.30.0.3
       - RABBITMQ_USER=${RABBITMQ_USER}
       - RABBITMQ_PASS=${RABBITMQ_PASS}
       - RABBITMQ_PORT=${RABBITMQ_PORT}
@@ -45,6 +59,9 @@ services:
       mongodb:
         condition: service_started
     restart: on-failure
+    networks:
+      rpgt_network:
+        ipv4_address: 172.30.0.4
 
   data-provider:
     build:
@@ -53,18 +70,26 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - MONGODB_URL=mongodb://admin:donanobispacem@mongodb:27017
+      - MONGODB_URL=mongodb://admin:donanobispacem@172.30.0.2:27017
       - MONGODB_DB=${MONGODB_DB}
       - MONGODB_COLLECTION=${MONGODB_COLLECTION}
-      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_HOST=172.30.0.3
       - RABBITMQ_USER=${RABBITMQ_USER}
       - RABBITMQ_PASS=${RABBITMQ_PASS}
       - RABBITMQ_PORT=${RABBITMQ_PORT}
       - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
       - RABBITMQ_ROUTING_KEY=${RABBITMQ_ROUTING_KEY}
       - RABBITMQ_QUEUE=${RABBITMQ_QUEUE}
+      - PYTHONPATH=/app/Data-Provider-Service
     depends_on:
-      - rpgprep
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      rpgt_network:
+        ipv4_address: 172.30.0.5
 
   dashboard:
     build:
@@ -73,21 +98,29 @@ services:
     ports:
       - "7777:7777"
     environment:
-      - MONGODB_URL=mongodb://admin:donanobispacem@mongodb:27017
+      - MONGODB_URL=mongodb://admin:donanobispacem@172.30.0.2:27017
       - MONGODB_DB=${MONGODB_DB}
       - MONGODB_COLLECTION_DASHBOARD=${MONGODB_COLLECTION_DASHBOARD}
-      - DATA_PROVIDER_URL=http://data-provider:8000
+      - DATA_PROVIDER_URL=http://172.30.0.5:8000
+      - PYTHONPATH=/app/Dashboard-Service
     depends_on:
       - data-provider
+    networks:
+      rpgt_network:
+        ipv4_address: 172.30.0.6
 
   simulator:
     build:
       context: .
       dockerfile: Dockerfile.simulator
     environment:
-      - DATA_PROVIDER_URL=http://data-provider:8000
+      - DATA_PROVIDER_URL=http://172.30.0.5:8000
     depends_on:
       - dashboard
+    restart: on-failure
+    networks:
+      rpgt_network:
+        ipv4_address: 172.30.0.7
 
   data-provider-tests:
     build:
@@ -95,10 +128,10 @@ services:
       dockerfile: Dockerfile.data-provider
     command: pytest Data-Provider-Service/tests/test_dprovider.py
     environment:
-      - MONGODB_URL=mongodb://admin:donanobispacem@mongodb:27017
+      - MONGODB_URL=mongodb://admin:donanobispacem@172.30.0.2:27017
       - MONGODB_DB=${MONGODB_DB}
       - MONGODB_COLLECTION=${MONGODB_COLLECTION}
-      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_HOST=172.30.0.3
       - RABBITMQ_USER=${RABBITMQ_USER}
       - RABBITMQ_PASS=${RABBITMQ_PASS}
       - RABBITMQ_PORT=${RABBITMQ_PORT}
@@ -107,3 +140,17 @@ services:
       - RABBITMQ_QUEUE=${RABBITMQ_QUEUE}
     depends_on:
       - data-provider
+    networks:
+      rpgt_network:
+        ipv4_address: 172.30.0.8
+
+volumes:
+  mongodb_data:
+
+networks:
+  rpgt_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/16

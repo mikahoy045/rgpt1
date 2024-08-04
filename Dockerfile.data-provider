@@ -5,6 +5,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY Data-Provider-Service ./Data-Provider-Service
+COPY . .
 
-CMD ["uvicorn", "Data-Provider-Service.dataprovider:app", "--host", "0.0.0.0", "--port", "8000"]
+ENV PYTHONPATH=/app/Data-Provider-Service
+
+CMD ["python", "-m", "uvicorn", "dataprovider:app", "--host", "0.0.0.0", "--port", "8000", "--app-dir", "/app/Data-Provider-Service"]

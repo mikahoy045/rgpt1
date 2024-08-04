@@ -3,10 +3,13 @@ import random
 import asyncio
 import aiohttp
 import os
+import logging
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 DATA_PROVIDER_URL = os.getenv("DATA_PROVIDER_URL")+"/events"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -75,4 +78,5 @@ async def main():
     await simulate_orders(csv_data)
 
 if __name__ == "__main__":
+    logging.info("Hotel order simulation process starting...")
     asyncio.run(main())

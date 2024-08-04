@@ -21,10 +21,26 @@ async def setup_mongodb():
     mongodb_db = os.getenv("MONGODB_DB")
     mongodb_collection = os.getenv("MONGODB_COLLECTION")
     
-    if mongodb_db not in db.client.list_database_names():
+    print(f"Attempting to list database names...")
+    try:
+        db_names = db.client.list_database_names()
+        print(f"Successfully listed database names: {db_names}")
+    except Exception as e:
+        print(f"Error listing database names: {str(e)}")
+        raise
+
+    if mongodb_db not in db_names:
         print(f"Creating database: {mongodb_db}")
     
-    if mongodb_collection not in db.db.list_collection_names():
+    print(f"Attempting to list collection names...")
+    try:
+        collection_names = db.db.list_collection_names()
+        print(f"Successfully listed collection names: {collection_names}")
+    except Exception as e:
+        print(f"Error listing collection names: {str(e)}")
+        raise
+
+    if mongodb_collection not in collection_names:
         print(f"Creating collection: {mongodb_collection}")
         db.db.create_collection(mongodb_collection)
     
